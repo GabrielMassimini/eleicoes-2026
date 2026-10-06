@@ -1,0 +1,53 @@
+import type { CargoId, Turno } from "@/lib/tse/urls";
+import type { Totais } from "@/lib/tse/normalize";
+
+// Formatos dos arquivos gerados pelo pipeline em public/data/.
+
+export interface Municipio {
+  /** Código TSE (5 dígitos). */
+  tse: string;
+  /** Código IBGE (7 dígitos), chave das malhas. */
+  ibge: string;
+  nome: string;
+  slug: string;
+  uf: string;
+  capital: boolean;
+}
+
+export interface CandidatoRef {
+  numero: string;
+  sq: string;
+  nome: string;
+  partido: string;
+}
+
+/** Totais por município em formato compacto (sem percentuais, que são derivados). */
+export interface TotaisCompactos {
+  eleitorado: number;
+  comparecimento: number;
+  abstencao: number;
+  validos: number;
+  brancos: number;
+  nulos: number;
+}
+
+export interface ResultadoMunicipalUf {
+  cargo: CargoId;
+  turno: Turno;
+  uf: string;
+  atualizadoEm: string;
+  /** Ordem dos candidatos; `municipios[ibge].v[i]` são os votos de `candidatos[i]`. */
+  candidatos: CandidatoRef[];
+  municipios: Record<string, TotaisCompactos & { v: number[] }>;
+}
+
+export function compactarTotais(t: Totais): TotaisCompactos {
+  return {
+    eleitorado: t.eleitorado,
+    comparecimento: t.comparecimento,
+    abstencao: t.abstencao,
+    validos: t.validos,
+    brancos: t.brancos,
+    nulos: t.nulos,
+  };
+}
