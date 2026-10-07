@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MapaResultado } from "@/components/map/MapaResultado";
 import { areasMunicipais, presidentePorUf, refs } from "@/lib/data/agregados";
-import { indiceCandidatos, perfilCandidato, resultado } from "@/lib/data/load";
+import { indiceCandidatos, municipiosDoUf, perfilCandidato, resultado, votosPorMunicipio } from "@/lib/data/load";
 import { fmtInt, fmtPct, idade, titleCase } from "@/lib/format";
 import { CARGOS, urlFoto } from "@/lib/tse/urls";
 import { UF_POR_SIGLA } from "@/lib/tse/regioes";
@@ -71,6 +71,37 @@ export default async function CandidatoPage({ params }: { params: Promise<{ sq: 
   const temProposta = existsSync(path.join(process.cwd(), "public", "propostas", `${sq}.pdf`));
 
   let mapa: React.ReactNode = null;
+  let maisVotados: { nome: string; href: string; votos: number; pct: number }[] = [];
+  if (cand && !majoritario) {
+    // Deputado: votos por município, a partir dos arquivos municipais da UF.
+    const chave = cargo === "depFederal" ? "depFederal" : "depLocal";
+    const [porMun, muns] = await Promise.all([votosPorMunicipio(uf, chave, posicao), municipiosDoUf(uf)]);
+    const porIbge = new Map(muns.map((m) => [m.ibge, m]));
+    const areas: Record<string, { nome: string; href: string; validos: number; v: number[] }> = {};
+    for (const [ibge, votos, validos] of porMun) {
+      const m = porIbge.get(ibge);
+      if (!m) continue;
+      areas[ibge] = { nome: m.nome, href: `/estados/${uf}/${m.slug}`, validos, v: [votos] };
+    }
+    maisVotados = Object.values(areas)
+      .map((a) => ({ nome: a.nome, href: a.href, votos: a.v[0], pct: a.validos ? (a.v[0] / a.validos) * 100 : 0 }))
+      .sort((a, b) => b.votos - a.votos)
+      .slice(0, 10);
+    if (muns.length > 1) {
+      mapa = (
+        <MapaResultado
+          geo={`/geo/uf/${uf.toUpperCase()}.json`}
+          candidatos={[{ numero: cand.numero, sq: cand.sq, nome: cand.nome, partido: cand.partido }]}
+          areas={areas}
+          unidade="município"
+          titulo={`Votos de ${titleCase(perfil.nome)} por município`}
+          modoInicial="percentual"
+          modos={["percentual"]}
+          rotuloSemDados="Nenhum voto no município"
+        />
+      );
+    }
+  }
   if (cand && majoritario) {
     if (cargo === "presidente") {
       const { candidatos, areas } = await presidentePorUf();
@@ -119,14 +150,16 @@ export default async function CandidatoPage({ params }: { params: Promise<{ sq: 
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
-      <header className="grid gap-6 pt-8 pb-10 sm:grid-cols-[8rem_1fr] sm:pt-12">
-        <img
-          src={urlFoto(cargo, 1, uf, sq)}
-          alt={`Foto de ${titleCase(perfil.nome)}`}
-          width={128}
-          height={172}
-          className="h-[172px] w-32 rounded-lg bg-wash object-cover"
-        />
+      <header className={`grid gap-6 pt-8 pb-10 sm:pt-12 ${majoritario ? "sm:grid-cols-[8rem_1fr]" : ""}`}>
+        {majoritario && (
+          <img
+            src={urlFoto(cargo, 1, uf, sq)}
+            alt={`Foto de ${titleCase(perfil.nome)}`}
+            width={128}
+            height={172}
+            className="h-[172px] w-32 rounded-lg bg-wash object-cover"
+          />
+        )}
         <div>
           <p className="text-sm text-ink-2">
             {nomeCargo}
@@ -179,14 +212,34 @@ export default async function CandidatoPage({ params }: { params: Promise<{ sq: 
         </div>
       </header>
 
-      {mapa && (
+      {(mapa || maisVotados.length > 0) && (
         <section className="border-t border-line pt-10">
           <h2 className="display mb-2 text-3xl">Onde teve mais votos</h2>
           <p className="mb-6 max-w-[60ch] text-ink-2">
-            Percentual dos votos válidos em cada {cargo === "presidente" ? "estado" : "município"}. Troque o modo para comparar
-            com os adversários.
+            Percentual dos votos válidos em cada {cargo === "presidente" ? "estado" : "município"}.
+            {majoritario ? " Troque o modo para comparar com os adversários." : ""}
           </p>
-          {mapa}
+          <div className={maisVotados.length ? "grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]" : ""}>
+            {mapa && <div>{mapa}</div>}
+            {maisVotados.length > 0 && (
+              <div>
+                <h3 className="mb-3 font-semibold">Municípios com mais votos</h3>
+                <ol className="divide-y divide-line rounded-lg border border-line bg-surface text-sm">
+                  {maisVotados.map((m, i) => (
+                    <li key={m.href} className="grid grid-cols-[1.5rem_1fr_auto_auto] items-baseline gap-3 px-3 py-2">
+                      <span className="num text-right text-ink-2">{i + 1}</span>
+                      <Link href={m.href} className="truncate hover:underline">
+                        {m.nome}
+                      </Link>
+                      <span className="num text-ink-2">{fmtInt(m.votos)}</span>
+                      <span className="num w-16 text-right font-semibold">{fmtPct(m.pct)}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-2 text-xs text-ink-2">Percentual = parcela dos votos válidos para o cargo em cada município.</p>
+              </div>
+            )}
+          </div>
         </section>
       )}
 

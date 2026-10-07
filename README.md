@@ -11,11 +11,13 @@ Todos os números vêm do Tribunal Superior Eleitoral. Projeto pessoal e indepen
 - **Mapa clicável** do Brasil por estado ou por município, com três leituras: quem venceu, percentual de um candidato e
   diferença entre os dois primeiros. Clique para descer de Brasil → estado → município.
 - **Quem foi para o 2º turno**: Presidente e o mosaico das 27 disputas para governador.
-- **Página de cada estado**: Governador, Senado (2 vagas), como o estado votou para Presidente, bancada eleita de
-  deputados federais e estaduais (com o quociente eleitoral explicado) e busca por município.
-- **Página de cada município** com todos os cargos majoritários e comparecimento.
-- **Página de cada candidato**: votação, onde teve mais votos, perfil (idade, escolaridade, ocupação, cor/raça
-  declarada) e bens declarados.
+- **Página de cada estado**: Governador, Senado (2 vagas), como o estado votou para Presidente, deputados federais e
+  estaduais (cadeiras por partido, votos e vagas por federação, quociente eleitoral explicado e a lista completa de
+  candidatos com busca e filtros por partido e situação) e busca por município.
+- **Página de cada município** com todos os cargos, inclusive deputados: mais votados na cidade, votos por partido e a
+  lista completa de candidatos votados ali.
+- **Página de cada candidato**: votação, mapa de onde teve mais votos (por estado ou município, também para
+  deputados), perfil (idade, escolaridade, ocupação, cor/raça declarada) e bens declarados.
 - **2º turno ao vivo**: atualiza a cada 30 s com os arquivos do TSE, mostra a totalização e marca quando a vantagem do
   líder já supera os eleitores das seções que faltam (uma conta, não projeção). Há uma
   simulação em `/ao-vivo/simulacao` para ver o comportamento antes do dia.
@@ -56,7 +58,7 @@ npm run dev
 Os dados gerados já estão no repositório (`public/data`, `public/geo`). Para gerar de novo a partir do TSE e do IBGE:
 
 ```bash
-npm run data           # municípios, resultados, votos por município, mapas e validação
+npm run data           # municípios, resultados, votos por município (todos os cargos), mapas e validação
 npm run data:candidatos
 ```
 

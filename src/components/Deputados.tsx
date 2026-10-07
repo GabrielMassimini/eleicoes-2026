@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { Amostra } from "@/components/Amostra";
-import { fmtInt, fmtPct, titleCase } from "@/lib/format";
+import { fmtInt } from "@/lib/format";
 import { corDoPartidoTema, estiloCor } from "@/lib/partidos";
 import type { Resultado } from "@/lib/tse/normalize";
 
@@ -43,40 +42,5 @@ export function ExplicacaoQuociente({ resultado }: { resultado: Resultado }) {
       <span className="num">{fmtInt(resultado.cargo.quociente)}</span> votos. As vagas que sobram são distribuídas pelas
       maiores médias. Por isso aparecem eleitos &quot;por QP&quot; (quociente partidário) e &quot;por média&quot;.
     </p>
-  );
-}
-
-export function TabelaEleitos({ resultado, uf }: { resultado: Resultado; uf: string }) {
-  const eleitos = resultado.candidatos.filter((c) => c.eleito);
-  return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-surface">
-      <table className="w-full min-w-[30rem] text-sm">
-        <thead className="border-b border-line text-left text-ink-2">
-          <tr>
-            <th className="px-4 py-2.5 font-normal">Eleito</th>
-            <th className="px-4 py-2.5 font-normal">Partido</th>
-            <th className="px-4 py-2.5 text-right font-normal">Votos</th>
-            <th className="hidden px-4 py-2.5 text-right font-normal sm:table-cell">% válidos</th>
-            <th className="hidden px-4 py-2.5 font-normal sm:table-cell">Como</th>
-          </tr>
-        </thead>
-        <tbody>
-          {eleitos.map((c) => (
-            <tr key={c.sq} className="border-b border-line last:border-0 hover:bg-wash">
-              <td className="px-4 py-1.5">
-                <Link href={`/candidatos/${c.sq}`} className="hover:underline">
-                  {titleCase(c.nome)}
-                </Link>
-              </td>
-              <td className="px-4 py-1.5 text-ink-2">{c.partido}</td>
-              <td className="num px-4 py-1.5 text-right">{fmtInt(c.votos)}</td>
-              <td className="num hidden px-4 py-1.5 text-right text-ink-2 sm:table-cell">{fmtPct(c.pct)}</td>
-              <td className="hidden px-4 py-1.5 text-ink-2 sm:table-cell">{c.situacao.replace("Eleito por ", "")}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="sr-only">{`${eleitos.length} eleitos em ${uf}`}</p>
-    </div>
   );
 }

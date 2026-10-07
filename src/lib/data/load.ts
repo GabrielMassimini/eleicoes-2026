@@ -5,7 +5,7 @@ import { cache } from "react";
 import type { Resultado } from "@/lib/tse/normalize";
 import { UF_POR_SIGLA, UFS } from "@/lib/tse/regioes";
 import type { CargoId } from "@/lib/tse/urls";
-import type { Municipio, PerfilCandidato, ResultadoMunicipalUf } from "./types";
+import type { DeputadosMunicipio, Municipio, PerfilCandidato, ResultadoMunicipalUf } from "./types";
 
 const DATA = path.join(process.cwd(), "public", "data");
 
@@ -34,6 +34,43 @@ export async function indiceCandidatos(): Promise<Record<string, [string, CargoI
 
 export async function perfilCandidato(uf: string, sq: string): Promise<PerfilCandidato | undefined> {
   return ((await lerJson(`candidatos/${uf.toLowerCase()}.json`)) as Record<string, PerfilCandidato>)[sq];
+}
+
+export async function deputadosMunicipio(uf: string, ibge: string): Promise<DeputadosMunicipio | null> {
+  try {
+    return (await lerJson(`1t/${uf.toLowerCase()}/mun/${ibge}.json`)) as DeputadosMunicipio;
+  } catch {
+    return null;
+  }
+}
+
+// Índice candidato -> votos por município, montado uma vez por processo (o build gera centenas de
+// páginas de candidatos da mesma UF; ler os ~600 arquivos municipais a cada página seria lento).
+const indicesDeputados = new Map<string, Promise<Map<number, [string, number, number][]>>>();
+
+/** Votos de um deputado em cada município da UF: [ibge, votos, válidos do município]. */
+export async function votosPorMunicipio(uf: string, chave: "depFederal" | "depLocal", indiceCandidato: number) {
+  const k = `${uf}/${chave}`;
+  if (!indicesDeputados.has(k)) {
+    indicesDeputados.set(
+      k,
+      (async () => {
+        const idx = new Map<number, [string, number, number][]>();
+        for (const m of await municipiosDoUf(uf)) {
+          const d = await deputadosMunicipio(uf, m.ibge);
+          if (!d) continue;
+          const bloco = d[chave];
+          for (const [i, votos] of bloco.v) {
+            const lista = idx.get(i) ?? [];
+            lista.push([m.ibge, votos, bloco.validos]);
+            idx.set(i, lista);
+          }
+        }
+        return idx;
+      })(),
+    );
+  }
+  return (await indicesDeputados.get(k)!).get(indiceCandidato) ?? [];
 }
 
 export function cargoDeputadoLocal(uf: string): CargoId {

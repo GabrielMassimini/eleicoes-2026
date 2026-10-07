@@ -41,6 +41,22 @@ export interface ResultadoMunicipalUf {
   municipios: Record<string, TotaisCompactos & { v: number[] }>;
 }
 
+/** Votação de deputados num município. `v` é esparso: [índice no resultado da UF, votos], só quem teve voto. */
+export interface DeputadosNoMunicipio {
+  validos: number;
+  /** [sigla, votos nominais, votos de legenda] por partido. */
+  partidos: [string, number, number][];
+  v: [number, number][];
+}
+
+/** public/data/1t/{uf}/mun/{ibge}.json */
+export interface DeputadosMunicipio {
+  ibge: string;
+  depFederal: DeputadosNoMunicipio;
+  /** Deputado estadual, ou distrital no DF. */
+  depLocal: DeputadosNoMunicipio;
+}
+
 export interface PerfilCandidato {
   sq: string;
   numero: string;

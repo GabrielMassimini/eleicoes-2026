@@ -55,6 +55,17 @@ describe("normalizarResultado", () => {
     expect(dep.candidatos.some((c) => c.situacao === "Suplente" && !c.eleito)).toBe(true);
   });
 
+  it("deputados: agremiações isoladas e federações têm votos, e a soma fecha os válidos", () => {
+    const dep = normalizarResultado(fixture("rr-depfederal.json"));
+    expect(dep.agremiacoes.some((a) => a.tipo === "isolado")).toBe(true);
+    for (const a of dep.agremiacoes) {
+      const nominaisDosCandidatos = dep.candidatos.filter((c) => a.partidos.includes(c.partido)).reduce((s, c) => s + c.votos, 0);
+      expect(a.votosNominais).toBe(nominaisDosCandidatos);
+    }
+    const total = dep.agremiacoes.reduce((s, a) => s + a.votosNominais + a.votosLegenda, 0);
+    expect(total).toBe(dep.totais.validos);
+  });
+
   it("município: abrangência mu", () => {
     const mu = normalizarResultado(fixture("sp-campinas-presidente.json"));
     expect(mu.abrangencia).toEqual({ tipo: "mu", codigo: "71072" });

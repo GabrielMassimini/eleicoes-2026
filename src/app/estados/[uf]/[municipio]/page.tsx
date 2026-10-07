@@ -3,9 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Placar } from "@/components/Placar";
 import { Totais } from "@/components/Totais";
-import { municipios, municipiosDoUf, resultado, resultadoMunicipal } from "@/lib/data/load";
+import { Amostra } from "@/components/Amostra";
+import { TodosDeputadosNoMunicipio } from "@/components/DeputadosNoMunicipio";
+import { VotosPartido } from "@/components/VotosPartido";
+import { cargoDeputadoLocal, deputadosMunicipio, municipios, municipiosDoUf, resultado, resultadoMunicipal } from "@/lib/data/load";
 import type { ResultadoMunicipalUf } from "@/lib/data/types";
-import { titleCase } from "@/lib/format";
+import { fmtInt, fmtPct, titleCase } from "@/lib/format";
+import { corDoPartidoTema } from "@/lib/partidos";
 import type { Candidato, Resultado, Totais as T } from "@/lib/tse/normalize";
 import { UF_POR_SIGLA } from "@/lib/tse/regioes";
 import type { CargoId } from "@/lib/tse/urls";
@@ -79,6 +83,25 @@ export default async function MunicipioPage({ params }: { params: Promise<{ uf: 
     })),
   );
   const blocos = cargos.map((c) => ({ ...c, dados: doMunicipio(c.mun, m.ibge, c.ref) }));
+
+  const cargoLocal = cargoDeputadoLocal(sigla);
+  const [deps, depFedUf, depLocalUf] = await Promise.all([
+    deputadosMunicipio(sigla, m.ibge),
+    resultado(sigla, "depFederal"),
+    resultado(sigla, cargoLocal),
+  ]);
+  const blocosDeputados = deps
+    ? [
+        { chave: "depFederal" as const, arquivo: "depFederal", rotulo: "Deputados federais", uf: depFedUf, dados: deps.depFederal },
+        {
+          chave: "depLocal" as const,
+          arquivo: cargoLocal,
+          rotulo: cargoLocal === "depDistrital" ? "Deputados distritais" : "Deputados estaduais",
+          uf: depLocalUf,
+          dados: deps.depLocal,
+        },
+      ]
+    : [];
   const pres = blocos[0].dados;
   const vencedor = pres?.candidatos[0];
 
@@ -134,6 +157,65 @@ export default async function MunicipioPage({ params }: { params: Promise<{ uf: 
               </section>
             ),
         )}
+
+        {blocosDeputados.map((b) => {
+          const top = [...b.dados.v].sort((x, y) => y[1] - x[1]).slice(0, 10);
+          return (
+            <section key={b.chave} className="border-t border-line pt-8">
+              <h2 className="display text-2xl">{b.rotulo}</h2>
+              <p className="mt-1 mb-6 text-sm text-ink-2">
+                {fmtInt(b.dados.validos)} votos válidos em {m.nome}, distribuídos entre {fmtInt(b.dados.v.length)} candidatos.
+                Situação refere-se ao resultado em {info.nome}.
+              </p>
+              <div className="grid gap-10 lg:grid-cols-2">
+                <div>
+                  <h3 className="mb-3 font-semibold">Mais votados em {m.nome}</h3>
+                  <ol className="divide-y divide-line rounded-lg border border-line bg-surface text-sm">
+                    {top.map(([i, votos], pos) => {
+                      const c = b.uf.candidatos[i];
+                      return (
+                        <li key={c.sq} className="grid grid-cols-[1.5rem_1fr_auto] items-baseline gap-3 px-3 py-2">
+                          <span className="num text-right text-ink-2">{pos + 1}</span>
+                          <span className="min-w-0">
+                            <Link href={`/candidatos/${c.sq}`} className={`hover:underline ${c.eleito ? "font-semibold" : ""}`}>
+                              {titleCase(c.nome)}
+                            </Link>
+                            <span className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-2">
+                              <Amostra cor={corDoPartidoTema(c.partido)} className="size-2" />
+                              {c.partido}, {c.eleito ? c.situacao.charAt(0).toLowerCase() + c.situacao.slice(1) : c.situacao === "Suplente" ? "suplente" : "não eleito"}
+                            </span>
+                          </span>
+                          <span className="text-right">
+                            <span className="num block font-semibold">{fmtPct(b.dados.validos ? (votos / b.dados.validos) * 100 : 0)}</span>
+                            <span className="num block text-xs text-ink-2">{fmtInt(votos)}</span>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+                <div>
+                  <h3 className="mb-3 font-semibold">Votos por partido em {m.nome}</h3>
+                  <VotosPartido
+                    validos={b.dados.validos}
+                    linhas={b.dados.partidos.map(([sigla, nominais, legenda]) => ({ sigla, partidoCor: sigla, nominais, legenda }))}
+                  />
+                </div>
+              </div>
+              <div className="mt-8">
+                <TodosDeputadosNoMunicipio
+                  uf={sigla}
+                  ibge={m.ibge}
+                  arquivoCargo={b.arquivo}
+                  chave={b.chave}
+                  rotulo={b.rotulo}
+                  municipio={m.nome}
+                  quantidade={b.dados.v.length}
+                />
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );

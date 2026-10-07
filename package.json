@@ -12,13 +12,14 @@
     "lint": "oxlint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "data": "npm run data:municipios && npm run data:resultados && npm run data:municipal && npm run data:geo && npm run data:validate",
+    "data": "npm run data:municipios && npm run data:resultados && npm run data:municipal && npm run data:deputados && npm run data:geo && npm run data:validate",
     "data:municipios": "tsx scripts/build-municipios.ts",
     "data:resultados": "tsx scripts/build-resultados.ts",
     "data:municipal": "tsx scripts/build-municipal.ts",
     "data:geo": "tsx scripts/build-geo.ts",
     "data:candidatos": "tsx scripts/build-candidatos.ts",
-    "data:validate": "tsx scripts/validate.ts"
+    "data:validate": "tsx scripts/validate.ts",
+    "data:deputados": "tsx scripts/build-deputados.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.104.1",

@@ -2,7 +2,7 @@
 import type { Topology } from "topojson-specification";
 import type { Resultado } from "@/lib/tse/normalize";
 import { UFS } from "@/lib/tse/regioes";
-import type { Municipio, ResultadoMunicipalUf } from "@/lib/data/types";
+import type { DeputadosMunicipio, Municipio, ResultadoMunicipalUf } from "@/lib/data/types";
 import { GEO_DIR, readJson } from "./lib/io";
 
 const erros: string[] = [];
@@ -75,7 +75,37 @@ for (const uf of UFS) {
 }
 check(municipaisOk, "Resultados municipais completos e somando o total de cada UF");
 
-// 4. Slugs únicos dentro de cada UF (usados nas URLs)
+// 4. Deputados: soma dos votos de cada candidato nos municípios = votos na UF
+let deputadosOk = true;
+for (const uf of UFS) {
+  const u = uf.sigla.toLowerCase();
+  const refs = {
+    depFederal: await r(u, "depFederal"),
+    depLocal: await r(u, uf.sigla === "DF" ? "depDistrital" : "depEstadual"),
+  };
+  const somas = { depFederal: refs.depFederal.candidatos.map(() => 0), depLocal: refs.depLocal.candidatos.map(() => 0) };
+  for (const m of municipios.filter((x) => x.uf === uf.sigla)) {
+    let d: DeputadosMunicipio;
+    try {
+      d = await readJson<DeputadosMunicipio>(`1t/${u}/mun/${m.ibge}.json`);
+    } catch {
+      deputadosOk = false;
+      erros.push(`${uf.sigla}/${m.nome}: sem arquivo de deputados`);
+      continue;
+    }
+    for (const chave of ["depFederal", "depLocal"] as const) for (const [i, v] of d[chave].v) somas[chave][i] += v;
+  }
+  for (const chave of ["depFederal", "depLocal"] as const) {
+    const errados = refs[chave].candidatos.filter((c, i) => c.votos !== somas[chave][i]);
+    if (errados.length) {
+      deputadosOk = false;
+      erros.push(`${uf.sigla}/${chave}: ${errados.length} candidatos com soma municipal diferente da UF`);
+    }
+  }
+}
+check(deputadosOk, "Deputados: votos por município somam exatamente o total de cada candidato na UF");
+
+// 5. Slugs únicos dentro de cada UF (usados nas URLs)
 const slugs = new Set<string>();
 const duplicados = municipios.filter((m) => {
   const k = `${m.uf}/${m.slug}`;

@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { BuscaMunicipios } from "@/components/BuscaMunicipios";
-import { Bancada, ExplicacaoQuociente, TabelaEleitos } from "@/components/Deputados";
+import { Bancada, ExplicacaoQuociente } from "@/components/Deputados";
+import { ListaCandidatos, type LinhaCandidato } from "@/components/ListaCandidatos";
+import { VotosPartido } from "@/components/VotosPartido";
 import { MapaEstado } from "@/components/map/MapaEstado";
 import { Placar } from "@/components/Placar";
 import { Totais, Totalizacao } from "@/components/Totais";
 import { areasMunicipais, refs } from "@/lib/data/agregados";
 import { cargoDeputadoLocal, municipiosDoUf, resultado, resultadoMunicipal } from "@/lib/data/load";
-import { titleCase } from "@/lib/format";
+import { fmtInt, titleCase } from "@/lib/format";
 import type { Resultado } from "@/lib/tse/normalize";
 import { REGIOES, UF_POR_SIGLA, UFS } from "@/lib/tse/regioes";
 
@@ -37,9 +39,22 @@ const SECOES = [
   ["governador", "Governador"],
   ["senado", "Senado"],
   ["presidente", "Presidente"],
-  ["deputados", "Deputados"],
+  ["deputados-federais", "Dep. federais"],
+  ["deputados-estaduais", "Dep. estaduais"],
   ["municipios", "Municípios"],
 ] as const;
+
+function linhasCandidatos(r: Resultado): LinhaCandidato[] {
+  return r.candidatos.map((c) => ({
+    sq: c.sq,
+    nome: c.nome,
+    partido: c.partido,
+    votos: c.votos,
+    pct: c.pct,
+    situacao: c.situacao,
+    eleito: c.eleito,
+  }));
+}
 
 export default async function EstadoPage({ params }: { params: Promise<{ uf: string }> }) {
   const { uf: param } = await params;
@@ -154,33 +169,46 @@ export default async function EstadoPage({ params }: { params: Promise<{ uf: str
 
       <section id="deputados" className="scroll-mt-16 mt-16 border-t border-line pt-10">
         <h2 className="display text-3xl">Deputados</h2>
-        <div className="mt-3 mb-8">
+        <div className="mt-3">
           <ExplicacaoQuociente resultado={depFed} />
         </div>
-        <div className="grid gap-12 lg:grid-cols-2">
-          {(
-            [
-              ["Deputados federais", depFed],
-              [rotuloLocal, depLocal],
-            ] as const
-          ).map(([rotulo, r]) => (
-            <div key={rotulo}>
-              <h3 className="text-lg font-semibold">
-                {rotulo}: {r.cargo.vagas} {r.cargo.vagas === 1 ? "vaga" : "vagas"}
-              </h3>
-              <p className="mt-1 mb-4 text-sm text-ink-2">
-                Cadeiras por partido. Quociente eleitoral: {r.cargo.quociente?.toLocaleString("pt-BR")} votos.
-              </p>
-              <Bancada resultado={r} />
-              <details className="mt-6">
-                <summary className="cursor-pointer text-sm font-semibold">Ver os {r.cargo.vagas} eleitos</summary>
-                <div className="mt-3">
-                  <TabelaEleitos resultado={r} uf={sigla} />
-                </div>
-              </details>
+        {(
+          [
+            ["deputados-federais", "Deputados federais", depFed],
+            ["deputados-estaduais", rotuloLocal, depLocal],
+          ] as const
+        ).map(([id, rotulo, r]) => (
+          <div key={id} id={id} className="scroll-mt-16 mt-12">
+            <h3 className="display text-2xl">
+              {rotulo}: {r.cargo.vagas} {r.cargo.vagas === 1 ? "vaga" : "vagas"}
+            </h3>
+            <p className="mt-1 text-sm text-ink-2">
+              Quociente eleitoral: {r.cargo.quociente?.toLocaleString("pt-BR")} votos. {fmtInt(r.candidatos.length)} candidatos.
+            </p>
+            <div className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
+              <div>
+                <h4 className="mb-3 font-semibold">Cadeiras por partido</h4>
+                <Bancada resultado={r} />
+              </div>
+              <div>
+                <h4 className="mb-3 font-semibold">Votos e vagas por partido ou federação</h4>
+                <VotosPartido
+                  validos={r.totais.validos}
+                  mostrarVagas
+                  linhas={r.agremiacoes.filter((a) => a.votosNominais + a.votosLegenda > 0 || a.vagas > 0).map((a) => ({
+                    sigla: a.sigla,
+                    partidoCor: a.partidos[0] ?? a.sigla,
+                    nominais: a.votosNominais,
+                    legenda: a.votosLegenda,
+                    vagas: a.vagas,
+                  }))}
+                />
+              </div>
             </div>
-          ))}
-        </div>
+            <h4 className="mt-10 mb-3 font-semibold">Todos os candidatos</h4>
+            <ListaCandidatos linhas={linhasCandidatos(r)} rotulo={rotulo} local={info.nome} />
+          </div>
+        ))}
       </section>
 
       <section id="municipios" className="scroll-mt-16 mt-16 border-t border-line pt-10">

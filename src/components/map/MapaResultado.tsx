@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { feature, mesh } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import { SUPERFICIE } from "@/lib/colors";
+import { SEM_DADOS, SUPERFICIE } from "@/lib/colors";
 import type { CandidatoRef } from "@/lib/data/types";
 import { escala, type ModoMapa } from "@/lib/escalas";
 import { fmtInt, fmtPct, titleCase } from "@/lib/format";
@@ -34,6 +34,10 @@ interface Props {
   modoInicial?: ModoMapa["tipo"];
   /** Candidato selecionado no modo "percentual". */
   candidatoInicial?: number;
+  /** Modos disponíveis (padrão: todos). Com um só, a barra de modos some. */
+  modos?: ModoMapa["tipo"][];
+  /** Texto da legenda para áreas sem dado (padrão: nada). */
+  rotuloSemDados?: string;
 }
 
 // Copiado por scripts/copiar-worker.mjs (predev/prebuild).
@@ -54,6 +58,8 @@ export function MapaResultado({
   titulo,
   modoInicial = "vencedor",
   candidatoInicial = 0,
+  modos = ["vencedor", "percentual", "diferenca"],
+  rotuloSemDados,
 }: Props) {
   const tema = useTema();
   const router = useRouter();
@@ -213,6 +219,9 @@ export function MapaResultado({
     map.on("mouseleave", "preenchimento", sair);
     map.on("click", "preenchimento", clicar);
     return () => {
+      // Ao sair da página (ex.: clique num estado), o efeito que cria o mapa já o destruiu antes
+      // desta limpeza rodar; mexer nele aqui gerava o "Runtime TypeError".
+      if (mapRef.current !== map) return;
       map.off("mousemove", "preenchimento", mover);
       map.off("mouseleave", "preenchimento", sair);
       map.off("click", "preenchimento", clicar);
@@ -230,14 +239,19 @@ export function MapaResultado({
 
   return (
     <section aria-label={titulo}>
+      {modos.length > 1 && (
       <div className="mb-3 flex flex-wrap items-center gap-2" role="toolbar" aria-label="Como colorir o mapa">
-        <Segmento ativo={tipo === "vencedor"} onClick={() => setTipo("vencedor")}>
-          Quem venceu
-        </Segmento>
-        <Segmento ativo={tipo === "percentual"} onClick={() => setTipo("percentual")}>
-          Votos de um candidato
-        </Segmento>
-        {temDisputa && (
+        {modos.includes("vencedor") && (
+          <Segmento ativo={tipo === "vencedor"} onClick={() => setTipo("vencedor")}>
+            Quem venceu
+          </Segmento>
+        )}
+        {modos.includes("percentual") && (
+          <Segmento ativo={tipo === "percentual"} onClick={() => setTipo("percentual")}>
+            Votos de um candidato
+          </Segmento>
+        )}
+        {temDisputa && modos.includes("diferenca") && (
           <Segmento ativo={tipo === "diferenca"} onClick={() => setTipo("diferenca")}>
             Diferença entre os dois primeiros
           </Segmento>
@@ -259,6 +273,7 @@ export function MapaResultado({
           </label>
         )}
       </div>
+      )}
 
       <div className="relative overflow-hidden rounded-lg border border-line bg-surface">
         <div ref={container} className="h-[380px] w-full sm:h-[520px]" />
@@ -294,6 +309,12 @@ export function MapaResultado({
       </div>
 
       <Legenda classes={esc.legenda} continua={tipo !== "vencedor"} />
+      {rotuloSemDados && (
+        <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-2">
+          <span aria-hidden className="size-2.5 rounded-sm" style={{ background: SEM_DADOS[tema] }} />
+          {rotuloSemDados}
+        </p>
+      )}
       <p className="mt-1 text-xs text-ink-2">
         Passe o mouse ou toque em um {unidade} para ver os números{temLinks ? "; clique para abrir a página dele" : ""}.
       </p>

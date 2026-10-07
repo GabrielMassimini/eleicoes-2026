@@ -137,8 +137,9 @@ export function normalizarResultado(raw: unknown): Resultado {
       sigla: agr.com,
       tipo: TIPO_AGR[agr.tp] ?? agr.tp,
       vagas: toInt(agr.vag),
-      votosNominais: toInt(agr.tvtn),
-      votosLegenda: toInt(agr.tvtl),
+      // Federações trazem o total na agremiação; partidos isolados, só no partido.
+      votosNominais: agr.tvtn !== undefined ? toInt(agr.tvtn) : agr.par.reduce((s, p) => s + toInt(p.tvtn), 0),
+      votosLegenda: agr.tvtl !== undefined ? toInt(agr.tvtl) : agr.par.reduce((s, p) => s + toInt(p.tvtl), 0),
       partidos: agr.par.map((p) => p.sg),
     });
     for (const par of agr.par) {
