@@ -9,10 +9,14 @@ import { UFS } from "@/lib/tse/regioes";
 import { type CargoId, codigoEleicao, urlAndamento, urlResultado } from "@/lib/tse/urls";
 import type { DisputaAoVivo, MunicipiosAoVivo, PainelAoVivo } from "./tipos";
 
-const DATA = path.join(process.cwd(), "public", "data");
+// Os arquivos que esta rota lê estão listados em next.config.ts (outputFileTracingIncludes).
+// turbopackIgnore impede o bundler de incluir por conta própria os ~23 mil JSON de public/data.
+const DATA = path.join(/* turbopackIgnore: true */ process.cwd(), "public", "data");
+const lerDados = async <T>(...partes: string[]): Promise<T> =>
+  JSON.parse(await readFile(/* turbopackIgnore: true */ path.join(DATA, ...partes), "utf-8")) as T;
 
 async function primeiroTurno(abrangencia: string, cargo: CargoId): Promise<Resultado> {
-  return JSON.parse(await readFile(path.join(DATA, "1t", abrangencia, `${cargo}.json`), "utf-8")) as Resultado;
+  return lerDados<Resultado>("1t", abrangencia, `${cargo}.json`);
 }
 
 /** UFs com governador no 2º turno, segundo o resultado final do 1º. */
@@ -88,7 +92,7 @@ export async function painelOficial(): Promise<PainelAoVivo> {
 // --- Municípios de uma UF (Presidente) -----------------------------------------------------------
 
 async function municipiosDaUf(uf: string): Promise<Municipio[]> {
-  const todos = JSON.parse(await readFile(path.join(DATA, "municipios.json"), "utf-8")) as Municipio[];
+  const todos = await lerDados<Municipio[]>("municipios.json");
   return todos.filter((m) => m.uf === uf.toUpperCase());
 }
 
@@ -136,9 +140,7 @@ export async function municipiosOficial(uf: string): Promise<MunicipiosAoVivo> {
 
 export async function municipiosSimulado(uf: string, agora = Date.now()): Promise<MunicipiosAoVivo> {
   const [muns, finalistas] = await Promise.all([municipiosDaUf(uf), finalistasPresidente()]);
-  const mun = JSON.parse(
-    await readFile(path.join(DATA, "1t", uf.toLowerCase(), "municipios-presidente.json"), "utf-8"),
-  ) as ResultadoMunicipalUf;
+  const mun = await lerDados<ResultadoMunicipalUf>("1t", uf.toLowerCase(), "municipios-presidente.json");
   const indices = finalistas.map((sq) => mun.candidatos.findIndex((c) => c.sq === sq));
   const global = (agora % CICLO_SIMULACAO_MS) / CICLO_SIMULACAO_MS;
   const out: MunicipiosAoVivo = { uf, modo: "simulacao", atualizadoEm: new Date(agora).toISOString(), candidatos: finalistas, municipios: {} };
