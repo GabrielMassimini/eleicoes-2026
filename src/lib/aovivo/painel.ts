@@ -43,24 +43,43 @@ function paraDisputa(abrangencia: string, r: Resultado): DisputaAoVivo {
 
 // --- Dados oficiais ------------------------------------------------------------------------------
 
-// Último resultado bom por URL, por instância da função. Se o TSE falhar ou mudar o formato,
-// servimos o anterior em vez de derrubar a página.
-const ultimoBom = new Map<string, Resultado>();
+// Último resultado bom por URL, por instância da função. Serve para duas coisas:
+// 1. Requisição condicional: mandamos o ETag que o TSE devolveu da última vez; se o arquivo não
+//    mudou, o TSE responde 304 sem corpo e reaproveitamos o já normalizado. Isso deixa barato
+//    consultar a cada poucos segundos.
+// 2. Reserva: se o TSE falhar ou mudar o formato, servimos o anterior em vez de derrubar a página.
+const ultimoBom = new Map<string, { resultado: Resultado; etag: string | null }>();
+// Várias requisições simultâneas à rota compartilham a mesma busca ao TSE.
+const emAndamento = new Map<string, Promise<Busca>>();
 
 type Busca = { resultado: Resultado | null; atrasado: boolean; ausente: boolean };
 
-async function buscar(url: string): Promise<Busca> {
+async function buscarAgora(url: string): Promise<Busca> {
+  const anterior = ultimoBom.get(url);
   try {
-    const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(8000) });
-    if (res.status === 404 || res.status === 403) return { resultado: ultimoBom.get(url) ?? null, atrasado: false, ausente: true };
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: anterior?.etag ? { "If-None-Match": anterior.etag } : undefined,
+      signal: AbortSignal.timeout(6000),
+    });
+    if (res.status === 304 && anterior) return { resultado: anterior.resultado, atrasado: false, ausente: false };
+    if (res.status === 404 || res.status === 403) return { resultado: anterior?.resultado ?? null, atrasado: false, ausente: true };
     if (!res.ok) throw new Error(`${res.status}`);
     const r = normalizarResultado(await res.json());
-    ultimoBom.set(url, r);
+    ultimoBom.set(url, { resultado: r, etag: res.headers.get("etag") });
     return { resultado: r, atrasado: false, ausente: false };
   } catch {
-    const anterior = ultimoBom.get(url) ?? null;
-    return { resultado: anterior, atrasado: anterior !== null, ausente: anterior === null };
+    return { resultado: anterior?.resultado ?? null, atrasado: anterior !== undefined, ausente: anterior === undefined };
   }
+}
+
+function buscar(url: string): Promise<Busca> {
+  let p = emAndamento.get(url);
+  if (!p) {
+    p = buscarAgora(url).finally(() => emAndamento.delete(url));
+    emAndamento.set(url, p);
+  }
+  return p;
 }
 
 export async function painelOficial(): Promise<PainelAoVivo> {
@@ -102,27 +121,37 @@ async function finalistasPresidente(): Promise<string[]> {
 }
 
 const cacheMunicipios = new Map<string, MunicipiosAoVivo>();
+// Seções totalizadas na última vez que buscamos cada município (chave "uf/codTSE").
+const secoesVistas = new Map<string, number>();
 
 export async function municipiosOficial(uf: string): Promise<MunicipiosAoVivo> {
   const [muns, finalistas] = await Promise.all([municipiosDaUf(uf), finalistasPresidente()]);
   const eleicao = codigoEleicao("presidente", 2);
-  const andamento = await fetch(urlAndamento(eleicao, uf), { cache: "no-store", signal: AbortSignal.timeout(8000) })
+  const andamento = await fetch(urlAndamento(eleicao, uf), { cache: "no-store", signal: AbortSignal.timeout(6000) })
     .then(async (r) => (r.ok ? normalizarAndamento(await r.json()) : null))
     .catch(() => null);
+  const anterior = cacheMunicipios.get(uf);
   if (!andamento) {
-    const anterior = cacheMunicipios.get(uf);
     return anterior ?? { uf, modo: "aguardando", atualizadoEm: new Date().toISOString(), candidatos: finalistas, municipios: {} };
   }
-  const progresso = new Map(andamento.municipios.map((m) => [m.codigoTse, m.totais.pctTotalizado]));
+  const secoes = new Map(andamento.municipios.map((m) => [m.codigoTse, m.totais.secoesTotalizadas]));
   const limite = pLimit(24);
   const out: MunicipiosAoVivo = { uf, modo: "oficial", atualizadoEm: andamento.atualizadoEm, candidatos: finalistas, municipios: {} };
   await Promise.all(
     muns.map((m) =>
       limite(async () => {
-        // Só busca o município se já tiver alguma seção totalizada.
-        if (!progresso.get(m.tse)) return;
+        const totalizadas = secoes.get(m.tse) ?? 0;
+        if (!totalizadas) return; // nenhuma seção totalizada ainda
+        const chave = `${uf}/${m.tse}`;
+        // O arquivo de andamento diz quantas seções cada município já totalizou: só buscamos de
+        // novo os que avançaram desde a última consulta.
+        if (secoesVistas.get(chave) === totalizadas && anterior?.municipios[m.ibge]) {
+          out.municipios[m.ibge] = anterior.municipios[m.ibge];
+          return;
+        }
         const { resultado } = await buscar(urlResultado({ cargo: "presidente", turno: 2, abrangencia: uf, municipio: m.tse }));
         if (!resultado) return;
+        secoesVistas.set(chave, totalizadas);
         const votos = new Map(resultado.candidatos.map((c) => [c.sq, c.votos]));
         out.municipios[m.ibge] = {
           nome: m.nome,

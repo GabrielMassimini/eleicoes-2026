@@ -34,9 +34,9 @@ export function vencedor(area: AreaVotos): number {
   return melhor;
 }
 
-function limitesPercentual(max: number): number[] {
-  if (max >= 50) return [30, 40, 50, 60, 70];
-  const passo = [1, 2, 5, 10].find((p) => p * 5 >= max) ?? 10;
+function limitesPercentual(referencia: number): number[] {
+  if (referencia >= 50) return [30, 40, 50, 60, 70];
+  const passo = [1, 2, 5, 10].find((p) => p * 5 >= referencia) ?? 10;
   return [1, 2, 3, 4, 5].map((k) => k * passo);
 }
 
@@ -62,8 +62,11 @@ export function escala(modo: ModoMapa, areas: AreaVotos[], nomes: string[], core
 
   if (modo.tipo === "percentual") {
     const i = modo.candidato;
-    const max = Math.max(0, ...areas.map((a) => pct(a, i)));
-    const limites = limitesPercentual(max);
+    // Calibra pelo percentil 95, não pelo máximo: um município atípico (ex.: a cidade natal de
+    // um deputado, com 70%) não deve jogar todo o resto do mapa numa faixa só.
+    const valores = areas.filter((a) => a.validos > 0).map((a) => pct(a, i)).sort((x, y) => x - y);
+    const p95 = valores.length ? valores[Math.min(valores.length - 1, Math.floor(valores.length * 0.95))] : 0;
+    const limites = limitesPercentual(p95);
     const rampa = rampaSequencial(cores[i], limites.length + 1, tema);
     const legenda = rampa.map((cor, k) => ({
       cor,

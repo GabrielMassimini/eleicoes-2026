@@ -80,7 +80,7 @@ export default async function SobrePage() {
           <Link href="/ao-vivo" className="text-ink underline underline-offset-2">
             2º turno ao vivo
           </Link>{" "}
-          consulta os arquivos de resultado do TSE a cada 30 segundos. Uma disputa aparece como &quot;não pode mais ser
+          consulta os arquivos de resultado do TSE a cada 5 segundos. Uma disputa aparece como &quot;não pode mais ser
           alcançada&quot; quando a vantagem do líder supera o número de eleitores aptos nas seções que ainda faltam
           totalizar. É uma conta, não uma projeção estatística. O resultado oficial é sempre o divulgado pelo TSE.
         </p>

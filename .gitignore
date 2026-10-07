@@ -8,3 +8,4 @@ next-env.d.ts
 # downloads brutos do pipeline (os JSON finais em data/ são commitados)
 .cache/
 public/maplibre/
+.claude/

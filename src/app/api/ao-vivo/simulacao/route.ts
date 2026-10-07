@@ -6,6 +6,6 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const painel = await painelSimulado();
   return Response.json(painel, {
-    headers: { "Cache-Control": "public, max-age=0, s-maxage=5, stale-while-revalidate=10" },
+    headers: { "Cache-Control": "public, max-age=0, s-maxage=3, stale-while-revalidate=2" },
   });
 }

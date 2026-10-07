@@ -11,6 +11,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ uf: stri
   const simulacao = new URL(req.url).searchParams.get("simulacao") === "1";
   const dados = simulacao ? await municipiosSimulado(uf.toLowerCase()) : await municipiosOficial(uf.toLowerCase());
   return Response.json(dados, {
-    headers: { "Cache-Control": `public, max-age=0, s-maxage=${simulacao ? 5 : 60}, stale-while-revalidate=120` },
+    headers: { "Cache-Control": `public, max-age=0, s-maxage=${simulacao ? 5 : 8}, stale-while-revalidate=5` },
   });
 }

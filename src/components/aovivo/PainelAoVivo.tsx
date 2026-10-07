@@ -64,7 +64,8 @@ const hora = (iso: string) =>
   new Date(iso).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 export function PainelAoVivo({ iniciais, simulacao }: { iniciais: FinalistasIniciais; simulacao: boolean }) {
-  const intervalo = simulacao ? 5_000 : 30_000;
+  // A cada 5 s; com a aba em segundo plano, a cada 10 s.
+  const intervalo = 5_000;
   const { painel, erro, carregando, ultimaBusca } = usePainel(simulacao ? "/api/ao-vivo/simulacao" : "/api/ao-vivo", intervalo);
   const agora = useAgora();
   const ordemPres = iniciais.presidente.map((c) => c.sq);
@@ -274,7 +275,7 @@ function MunicipiosAoVivoSecao({ iniciais, simulacao, intervalo }: { iniciais: F
       } catch {
         // mantém o último resultado; tenta de novo no próximo ciclo
       } finally {
-        if (vivo) timer = setTimeout(buscar, Math.max(intervalo, simulacao ? 5_000 : 60_000));
+        if (vivo) timer = setTimeout(buscar, document.hidden ? 20_000 : 10_000);
       }
     };
     buscar();
@@ -353,7 +354,7 @@ function Aguardando({ iniciais, agora }: { iniciais: FinalistasIniciais; agora: 
         </p>
       )}
       <p className="mt-6 max-w-[60ch] text-ink-2">
-        Esta página se atualiza sozinha quando o TSE publicar os resultados, a cada 30 segundos. Enquanto isso, veja como ela
+        Esta página se atualiza sozinha quando o TSE publicar os resultados, a cada 5 segundos. Enquanto isso, veja como ela
         funciona numa{" "}
         <Link href="/ao-vivo/simulacao" className="font-semibold text-ink underline underline-offset-2">
           simulação com os números do 1º turno

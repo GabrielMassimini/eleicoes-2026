@@ -102,6 +102,13 @@ export function MapaResultado({
       cooperativeGestures: true,
       renderWorldCopies: false,
       fadeDuration: 0,
+      locale: {
+        "CooperativeGesturesHandler.WindowsHelpText": "Use Ctrl + rolagem para dar zoom no mapa",
+        "CooperativeGesturesHandler.MacHelpText": "Use ⌘ + rolagem para dar zoom no mapa",
+        "CooperativeGesturesHandler.MobileHelpText": "Use dois dedos para mover o mapa",
+        "NavigationControl.ZoomIn": "Aproximar",
+        "NavigationControl.ZoomOut": "Afastar",
+      },
     });
     map.touchZoomRotate.disableRotation();
     map.on("error", (e) => console.error("[mapa]", e.error));
