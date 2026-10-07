@@ -1,28 +1,15 @@
 import Link from "next/link";
-import { MapaResultado, type AreaInfo } from "@/components/map/MapaResultado";
+import { MapaResultado } from "@/components/map/MapaResultado";
 import { ListaDisputas, MosaicoUf } from "@/components/MosaicoUf";
 import { Placar } from "@/components/Placar";
 import { Totais, Totalizacao } from "@/components/Totais";
-import { disputasEstaduais, resultado } from "@/lib/data/load";
+import { presidentePorUf } from "@/lib/data/agregados";
+import { disputasEstaduais } from "@/lib/data/load";
 import { titleCase } from "@/lib/format";
-import { UFS } from "@/lib/tse/regioes";
 
 export default async function Home() {
-  const br = await resultado("br", "presidente");
-  const porUf = await Promise.all(UFS.map(async (u) => ({ uf: u, r: await resultado(u.sigla, "presidente") })));
+  const { br, candidatos, areas } = await presidentePorUf();
   const governadores = await disputasEstaduais("governador");
-
-  const candidatos = br.candidatos.map(({ numero, sq, nome, partido }) => ({ numero, sq, nome, partido }));
-  const areas: Record<string, AreaInfo> = {};
-  for (const { uf, r } of porUf) {
-    const votos = new Map(r.candidatos.map((c) => [c.sq, c.votos]));
-    areas[uf.ibge] = {
-      nome: uf.nome,
-      href: `/estados/${uf.sigla.toLowerCase()}`,
-      validos: r.totais.validos,
-      v: candidatos.map((c) => votos.get(c.sq) ?? 0),
-    };
-  }
 
   const finalistas = br.candidatos.filter((c) => c.segundoTurno);
   const eleito = br.candidatos.find((c) => c.eleito);
@@ -43,6 +30,16 @@ export default async function Home() {
         <div className="mt-4">
           <Totalizacao totais={br.totais} atualizadoEm={br.atualizadoEm} />
         </div>
+        <Link
+          href="/ao-vivo"
+          className="mt-6 inline-flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-sm hover:bg-wash"
+        >
+          <span aria-hidden className="size-2 shrink-0 rounded-full bg-ink" />
+          <span>
+            <span className="font-semibold">2º turno em 25 de outubro.</span>{" "}
+            <span className="text-ink-2">Acompanhe a apuração ao vivo a partir das 17h.</span>
+          </span>
+        </Link>
       </section>
 
       <section className="grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
@@ -72,8 +69,8 @@ export default async function Home() {
             : `${govSegundo} ${govSegundo === 1 ? "estado volta" : "estados voltam"} às urnas para escolher governador`}
         </h2>
         <p className="mt-3 max-w-[60ch] text-ink-2">
-          Em preto, as disputas que vão ao 2º turno em 25 de outubro. Nos demais estados, o governador já foi eleito.
-          Toque em um estado para ver o resultado completo, inclusive Senado e deputados.
+          Os quadrados preenchidos são as disputas que vão ao 2º turno em 25 de outubro. Nos demais estados, o governador
+          já foi eleito. Toque em um estado para ver o resultado completo, inclusive Senado e deputados.
         </p>
         <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
           <MosaicoUf disputas={governadores} cargo="Governador" />

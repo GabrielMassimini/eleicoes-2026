@@ -1,16 +1,17 @@
 "use client";
 
-import maplibregl, { type GeoJSONSource, type MapMouseEvent } from "maplibre-gl";
+import { Map as MapLibre, NavigationControl, setWorkerUrl, type MapGeoJSONFeature, type MapMouseEvent } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { feature, mesh } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import { corCandidato, SUPERFICIE } from "@/lib/colors";
+import { SUPERFICIE } from "@/lib/colors";
 import type { CandidatoRef } from "@/lib/data/types";
 import { escala, type ModoMapa } from "@/lib/escalas";
 import { fmtInt, fmtPct, titleCase } from "@/lib/format";
-import { useTema } from "@/lib/useTema";
+import { coresDaDisputa } from "@/lib/partidos";
+import { temaAtual, useTema } from "@/lib/useTema";
 
 export interface AreaInfo {
   nome: string;
@@ -31,22 +32,38 @@ interface Props {
   titulo: string;
   /** Modo inicial. */
   modoInicial?: ModoMapa["tipo"];
+  /** Candidato selecionado no modo "percentual". */
+  candidatoInicial?: number;
 }
 
+// Copiado por scripts/copiar-worker.mjs (predev/prebuild).
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+
 type Hover = { id: string; x: number; y: number; fixo?: boolean } | null;
+type PropsArea = { id: string; uf: string };
+type EventoMapa = MapMouseEvent & { features?: MapGeoJSONFeature[] };
 
 const nomeCurto = (c: CandidatoRef) => titleCase(c.nome);
 
-export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titulo, modoInicial = "vencedor" }: Props) {
+export function MapaResultado({
+  geo,
+  candidatos,
+  areas,
+  bordasUf,
+  unidade,
+  titulo,
+  modoInicial = "vencedor",
+  candidatoInicial = 0,
+}: Props) {
   const tema = useTema();
   const router = useRouter();
   const container = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
+  const mapRef = useRef<MapLibre | null>(null);
   const idsRef = useRef<string[]>([]);
   const [pronto, setPronto] = useState(false);
   const [hover, setHover] = useState<Hover>(null);
   const [tipo, setTipo] = useState<ModoMapa["tipo"]>(modoInicial);
-  const [cand, setCand] = useState(0);
+  const [cand, setCand] = useState(candidatoInicial);
 
   const temDisputa = candidatos.length >= 2;
   const modo: ModoMapa =
@@ -54,14 +71,24 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
 
   const nomes = useMemo(() => candidatos.map(nomeCurto), [candidatos]);
   const lista = useMemo(() => Object.values(areas), [areas]);
-  const esc = useMemo(() => escala(modo, lista, nomes, tema), [modo.tipo, cand, lista, nomes, tema]); // eslint-disable-line
+  const temLinks = useMemo(() => lista.some((a) => a.href), [lista]);
+  // Cor do partido de cada candidato, resolvendo conflitos na ordem da disputa.
+  const cores = useMemo(() => {
+    const mapa = coresDaDisputa(candidatos);
+    return candidatos.map((c) => (tema === "claro" ? mapa[c.sq].claro : mapa[c.sq].escuro));
+  }, [candidatos, tema]);
+  const esc = useMemo(() => escala(modo, lista, nomes, cores, tema), [modo.tipo, cand, lista, nomes, cores, tema]); // eslint-disable-line
 
   // Cria o mapa uma vez por geometria.
   useEffect(() => {
     if (!container.current) return;
-    const map = new maplibregl.Map({
+    const map = new MapLibre({
       container: container.current,
-      style: { version: 8, sources: {}, layers: [{ id: "fundo", type: "background", paint: { "background-color": SUPERFICIE.claro } }] },
+      style: {
+        version: 8,
+        sources: {},
+        layers: [{ id: "fundo", type: "background", paint: { "background-color": SUPERFICIE[temaAtual()] } }],
+      },
       attributionControl: false,
       dragRotate: false,
       pitchWithRotate: false,
@@ -71,12 +98,13 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
       fadeDuration: 0,
     });
     map.touchZoomRotate.disableRotation();
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.on("error", (e) => console.error("[mapa]", e.error));
+    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
 
     let cancelado = false;
     map.on("load", async () => {
-      const topo = (await fetch(geo).then((r) => r.json())) as Topology<{ areas: GeometryCollection<{ uf: string }> }>;
+      const topo = (await fetch(geo).then((r) => r.json())) as Topology<{ areas: GeometryCollection<PropsArea> }>;
       if (cancelado) return;
       const fc = feature(topo, topo.objects.areas);
       idsRef.current = fc.features.map((f) => String(f.properties?.id ?? f.id));
@@ -91,10 +119,11 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
         id: "divisas",
         type: "line",
         source: "areas",
-        paint: { "line-color": SUPERFICIE.claro, "line-width": bordasUf ? 0.3 : 0.8 },
+        paint: { "line-color": SUPERFICIE[temaAtual()], "line-width": bordasUf ? 0.3 : 0.8 },
       });
       if (bordasUf) {
-        const linhas = mesh(topo, topo.objects.areas, (a, b) => a.properties.uf !== b.properties.uf);
+        const uf = (g: unknown) => (g as { properties?: PropsArea }).properties?.uf;
+        const linhas = mesh(topo, topo.objects.areas, (a, b) => uf(a) !== uf(b));
         map.addSource("ufs", { type: "geojson", data: linhas });
         map.addLayer({ id: "ufs", type: "line", source: "ufs", paint: { "line-color": "#52514e", "line-width": 1 } });
       }
@@ -150,12 +179,12 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
       if (id) map.setFeatureState({ source: "areas", id }, { hover: true });
       atual = id;
     };
-    const idDe = (e: MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
+    const idDe = (e: EventoMapa) => {
       const f = e.features?.[0];
       return f ? String(f.properties?.id ?? f.id) : null;
     };
 
-    const mover = (e: MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
+    const mover = (e: EventoMapa) => {
       if (toque) return;
       const id = idDe(e);
       marcar(id);
@@ -168,7 +197,7 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
       map.getCanvas().style.cursor = "";
       setHover(null);
     };
-    const clicar = (e: MapMouseEvent & { features?: maplibregl.MapGeoJSONFeature[] }) => {
+    const clicar = (e: EventoMapa) => {
       const id = idDe(e);
       if (!id) return;
       if (toque) {
@@ -248,7 +277,7 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
             <ul className="mt-2 space-y-1.5">
               {ranking.map(({ i, votos }) => (
                 <li key={i} className="flex items-center gap-2">
-                  <span aria-hidden className="h-0.5 w-3 shrink-0 rounded" style={{ background: corCandidato(i, tema) }} />
+                  <span aria-hidden className="h-0.5 w-3 shrink-0 rounded" style={{ background: cores[i] }} />
                   <span className="min-w-0 flex-1 truncate text-ink-2">{nomes[i]}</span>
                   <span className="num font-semibold">{fmtPct(area.validos ? (votos / area.validos) * 100 : 0, 1)}</span>
                 </li>
@@ -265,17 +294,11 @@ export function MapaResultado({ geo, candidatos, areas, bordasUf, unidade, titul
       </div>
 
       <Legenda classes={esc.legenda} continua={tipo !== "vencedor"} />
-      {!hover && (
-        <p className="mt-1 text-xs text-ink-2">
-          {window_hint(unidade)}
-        </p>
-      )}
+      <p className="mt-1 text-xs text-ink-2">
+        Passe o mouse ou toque em um {unidade} para ver os números{temLinks ? "; clique para abrir a página dele" : ""}.
+      </p>
     </section>
   );
-}
-
-function window_hint(unidade: string) {
-  return `Passe o mouse ou toque em um ${unidade} para ver os números; clique para abrir a página dele.`;
 }
 
 function Segmento({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -323,6 +346,3 @@ function Legenda({ classes, continua }: { classes: { cor: string; rotulo: string
     </ul>
   );
 }
-
-// Reexporta para quem só precisa trocar a fonte de dados.
-export type { GeoJSONSource };

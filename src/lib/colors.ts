@@ -1,27 +1,11 @@
-// Cores dos dados. A interface é monocromática; só os candidatos têm cor.
-//
-// Identidade: slots 1–3 da paleta categórica validada (azul, laranja, água). Mapas comparam
-// qualquer par de municípios, então valem as regras "all-pairs", que limitam a 3 cores. Do 4º
-// colocado em diante, "Outros" em cinza. A cor segue o candidato (pela posição na abrangência de
-// referência: Brasil para Presidente, a UF para os demais), nunca o ranking local de cada município.
-//
-// Validado com dataviz/scripts/validate_palette.js --pairs all (claro e escuro): PASS.
+// Cores de apoio dos mapas e rampas. A cor de cada candidato vem do partido (src/lib/partidos.ts);
+// a interface em volta é monocromática para não competir com elas.
 
 export type Tema = "claro" | "escuro";
 
-export const SLOTS: Record<Tema, string[]> = {
-  claro: ["#2a78d6", "#eb6834", "#1baf7a"],
-  escuro: ["#3987e5", "#d95926", "#199e70"],
-};
-
-export const OUTROS: Record<Tema, string> = { claro: "#a8a69f", escuro: "#6b6a65" };
 export const SEM_DADOS: Record<Tema, string> = { claro: "#e1e0d9", escuro: "#2c2c2a" };
 export const NEUTRO: Record<Tema, string> = { claro: "#f0efec", escuro: "#383835" };
 export const SUPERFICIE: Record<Tema, string> = { claro: "#fcfcfb", escuro: "#1a1a19" };
-
-export function corCandidato(indice: number, tema: Tema): string {
-  return indice >= 0 && indice < SLOTS[tema].length ? SLOTS[tema][indice] : OUTROS[tema];
-}
 
 // --- OKLab, para rampas sequenciais e divergentes de um único matiz ---------------------------
 
@@ -41,7 +25,7 @@ const fromLinear = (v: number) => {
   return Math.round(Math.min(1, Math.max(0, c)) * 255);
 };
 
-function hexToOklab(hex: string): Lab {
+export function hexToOklab(hex: string): Lab {
   const [r, g, b] = hexToRgb(hex).map(toLinear);
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
@@ -53,7 +37,7 @@ function hexToOklab(hex: string): Lab {
   ];
 }
 
-function oklabToHex([L, a, b]: Lab): string {
+export function oklabToHex([L, a, b]: Lab): string {
   const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
   const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
@@ -63,6 +47,13 @@ function oklabToHex([L, a, b]: Lab): string {
     -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
   ].map(fromLinear);
   return `#${rgb.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Distância euclidiana em OKLab (0 = iguais; ~0,1 começa a ser distinguível com folga). */
+export function distancia(a: string, b: string): number {
+  const A = hexToOklab(a);
+  const B = hexToOklab(b);
+  return Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
 }
 
 function mix(a: string, b: string, t: number): string {

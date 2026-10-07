@@ -3,7 +3,8 @@
 import { useSyncExternalStore } from "react";
 import type { Tema } from "./colors";
 
-function ler(): Tema {
+/** Tema em vigor agora, lido do documento (só no navegador). */
+export function temaAtual(): Tema {
   const forcado = document.documentElement.dataset.theme;
   if (forcado === "dark") return "escuro";
   if (forcado === "light") return "claro";
@@ -22,5 +23,5 @@ function assinar(cb: () => void) {
 }
 
 export function useTema(): Tema {
-  return useSyncExternalStore(assinar, ler, () => "claro");
+  return useSyncExternalStore(assinar, temaAtual, () => "claro");
 }

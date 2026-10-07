@@ -101,7 +101,11 @@ export function isSegundoTurno(situacao: string): boolean {
   return situacao.includes("2º turno") || situacao.toLowerCase().includes("2o turno");
 }
 
-export function normalizarTotais(s: { ts: string; st: string; pstn: string }, e: Record<string, string>, v?: Record<string, string>): Totais {
+export function normalizarTotais(
+  s: { ts: string; st: string; pstn: string },
+  e: { te: string; est: string; c: string; pcn: string; a: string; pan: string },
+  v?: { vv: string; vb: string; pvbn: string; tvn: string; ptvnn: string },
+): Totais {
   return {
     secoes: toInt(s.ts),
     secoesTotalizadas: toInt(s.st),

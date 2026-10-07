@@ -5,7 +5,7 @@ import { cache } from "react";
 import type { Resultado } from "@/lib/tse/normalize";
 import { UF_POR_SIGLA, UFS } from "@/lib/tse/regioes";
 import type { CargoId } from "@/lib/tse/urls";
-import type { Municipio, ResultadoMunicipalUf } from "./types";
+import type { Municipio, PerfilCandidato, ResultadoMunicipalUf } from "./types";
 
 const DATA = path.join(process.cwd(), "public", "data");
 
@@ -28,6 +28,14 @@ export async function municipiosDoUf(uf: string): Promise<Municipio[]> {
   return (await municipios()).filter((m) => m.uf === sigla);
 }
 
+export async function indiceCandidatos(): Promise<Record<string, [string, CargoId]>> {
+  return (await lerJson("candidatos/indice.json")) as Record<string, [string, CargoId]>;
+}
+
+export async function perfilCandidato(uf: string, sq: string): Promise<PerfilCandidato | undefined> {
+  return ((await lerJson(`candidatos/${uf.toLowerCase()}.json`)) as Record<string, PerfilCandidato>)[sq];
+}
+
 export function cargoDeputadoLocal(uf: string): CargoId {
   return uf.toUpperCase() === "DF" ? "depDistrital" : "depEstadual";
 }
@@ -36,6 +44,8 @@ export interface DisputaUf {
   uf: string;
   nome: string;
   eleito?: Resultado["candidatos"][number];
+  /** Todos os eleitos (Senado elege dois). */
+  eleitos: Resultado["candidatos"];
   segundoTurno: Resultado["candidatos"];
   lider: Resultado["candidatos"][number];
 }
@@ -49,6 +59,7 @@ export const disputasEstaduais = cache(async (cargo: "governador" | "senador"): 
         uf: u.sigla,
         nome: UF_POR_SIGLA[u.sigla].nome,
         eleito: r.candidatos.find((c) => c.eleito),
+        eleitos: r.candidatos.filter((c) => c.eleito),
         segundoTurno: r.candidatos.filter((c) => c.segundoTurno),
         lider: r.candidatos[0],
       };

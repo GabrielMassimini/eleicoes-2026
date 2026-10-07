@@ -20,7 +20,7 @@ const sobrenome = (nome: string) => titleCase(nome).split(" ").slice(-1)[0];
 
 export function MosaicoUf({ disputas, cargo }: { disputas: DisputaUf[]; cargo: string }) {
   return (
-    <nav className="grid aspect-[6/8] w-full max-w-[34rem] grid-cols-6 grid-rows-8 gap-1" aria-label={`${cargo} por estado`}>
+    <nav className="grid aspect-[6/8] w-full max-w-[26rem] grid-cols-6 grid-rows-8 gap-1" aria-label={`${cargo} por estado`}>
       {disputas.map((d) => {
         const [linha, coluna] = POSICAO[d.uf];
         const segundo = d.segundoTurno.length === 2;

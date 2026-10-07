@@ -7,3 +7,4 @@ next-env.d.ts
 .env*.local
 # downloads brutos do pipeline (os JSON finais em data/ são commitados)
 .cache/
+public/maplibre/

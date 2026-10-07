@@ -12,9 +12,6 @@
   --axis: #c3c2b7;
   --border: rgba(11, 11, 11, 0.1);
   --wash: rgba(11, 11, 11, 0.04);
-  --c1: #2a78d6;
-  --c2: #eb6834;
-  --c3: #1baf7a;
   --outros: #a8a69f;
 }
 
@@ -30,9 +27,6 @@
     --axis: #383835;
     --border: rgba(255, 255, 255, 0.1);
     --wash: rgba(255, 255, 255, 0.05);
-    --c1: #3987e5;
-    --c2: #d95926;
-    --c3: #199e70;
     --outros: #6b6a65;
   }
 }
@@ -48,9 +42,6 @@
   --axis: #383835;
   --border: rgba(255, 255, 255, 0.1);
   --wash: rgba(255, 255, 255, 0.05);
-  --c1: #3987e5;
-  --c2: #d95926;
-  --c3: #199e70;
   --outros: #6b6a65;
 }
 
@@ -115,4 +106,18 @@ body {
 .maplibregl-ctrl-bottom-right,
 .maplibregl-ctrl-bottom-left {
   display: none;
+}
+
+/* Cor de candidato/partido: o componente define --cc (claro), --ce (escuro) e --cs (secundária)
+   inline (ver estiloCor em src/lib/partidos.ts); aqui escolhemos pelo tema. */
+.cor-cand {
+  --c: var(--cc);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cor-cand {
+    --c: var(--ce);
+  }
+}
+:root[data-theme="dark"] .cor-cand {
+  --c: var(--ce);
 }

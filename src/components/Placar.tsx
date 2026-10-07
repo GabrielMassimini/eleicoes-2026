@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Amostra } from "@/components/Amostra";
 import { fmtInt, fmtPct, titleCase } from "@/lib/format";
+import { coresDaDisputa, estiloCor } from "@/lib/partidos";
 import type { Candidato } from "@/lib/tse/normalize";
 import { type CargoId, urlFoto } from "@/lib/tse/urls";
 
@@ -9,21 +11,14 @@ interface Props {
   /** UF usada no caminho da foto (Presidente usa "br"). */
   uf: string;
   /**
-   * Ordem de identidade das cores (sq). Se omitida, usa a própria ordem: certo quando o placar é a
-   * abrangência de referência (Brasil para Presidente, a UF para os demais).
+   * Disputa de referência para as cores (Brasil para Presidente, a UF para os demais). Garante que
+   * um candidato tenha a mesma cor no placar de um município e no resultado geral.
    */
-  ordemCores?: string[];
+  referencia?: { sq: string; partido: string }[];
   /** Quantos mostrar com foto e barra; os demais viram uma lista compacta. */
   destaque?: number;
   /** Situação (Eleito/2º turno) é da disputa inteira; em municípios fica oculta. */
   mostrarSituacao?: boolean;
-}
-
-const VAR_COR = ["var(--c1)", "var(--c2)", "var(--c3)"];
-
-export function corVar(sq: string, ordem: string[]): string {
-  const i = ordem.indexOf(sq);
-  return i >= 0 && i < 3 ? VAR_COR[i] : "var(--outros)";
 }
 
 function Situacao({ c }: { c: Candidato }) {
@@ -38,8 +33,8 @@ function Situacao({ c }: { c: Candidato }) {
   return null;
 }
 
-export function Placar({ candidatos, cargo, uf, ordemCores, destaque = 4, mostrarSituacao = true }: Props) {
-  const ordem = ordemCores ?? candidatos.map((c) => c.sq);
+export function Placar({ candidatos, cargo, uf, referencia, destaque = 4, mostrarSituacao = true }: Props) {
+  const cores = coresDaDisputa(referencia ?? candidatos);
   const max = Math.max(...candidatos.map((c) => c.pct), 1);
   const principais = candidatos.slice(0, destaque);
   const demais = candidatos.slice(destaque);
@@ -64,7 +59,8 @@ export function Placar({ candidatos, cargo, uf, ordemCores, destaque = 4, mostra
                   <Link href={`/candidatos/${c.sq}`} className="font-semibold hover:underline">
                     {titleCase(c.nome)}
                   </Link>
-                  <p className="text-sm text-ink-2">
+                  <p className="flex items-center gap-1.5 text-sm text-ink-2">
+                    <Amostra cor={cores[c.sq]} className="size-2.5" />
                     {c.partido}
                     {vice ? `, vice ${titleCase(vice.nome)}` : ""}
                   </p>
@@ -77,8 +73,8 @@ export function Placar({ candidatos, cargo, uf, ordemCores, destaque = 4, mostra
               <div className="mt-2 flex items-center gap-3">
                 <div className="h-2.5 flex-1" aria-hidden>
                   <div
-                    className="h-full rounded-r-[4px]"
-                    style={{ width: `${(c.pct / max) * 100}%`, minWidth: 2, background: corVar(c.sq, ordem) }}
+                    className="cor-cand h-full rounded-r-[4px]"
+                    style={{ ...estiloCor(cores[c.sq]), width: `${(c.pct / max) * 100}%`, minWidth: 2, background: "var(--c)" }}
                   />
                 </div>
                 {mostrarSituacao && <Situacao c={c} />}
@@ -91,7 +87,7 @@ export function Placar({ candidatos, cargo, uf, ordemCores, destaque = 4, mostra
       {demais.length > 0 && (
         <details className="group mt-5 border-t border-line pt-3">
           <summary className="cursor-pointer text-sm text-ink-2 hover:text-ink">
-            Outros {demais.length} candidatos
+            {demais.length === 1 ? "Outro candidato" : `Outros ${demais.length} candidatos`}
           </summary>
           <table className="mt-2 w-full text-sm">
             <tbody>
@@ -101,7 +97,10 @@ export function Placar({ candidatos, cargo, uf, ordemCores, destaque = 4, mostra
                     <Link href={`/candidatos/${c.sq}`} className="hover:underline">
                       {titleCase(c.nome)}
                     </Link>{" "}
-                    <span className="text-ink-2">{c.partido}</span>
+                    <span className="inline-flex items-center gap-1 text-ink-2">
+                      <Amostra cor={cores[c.sq]} className="size-2.5" />
+                      {c.partido}
+                    </span>
                   </td>
                   <td className="num py-1.5 text-right text-ink-2">{fmtInt(c.votos)}</td>
                   <td className="num w-20 py-1.5 text-right font-semibold">{fmtPct(c.pct)}</td>

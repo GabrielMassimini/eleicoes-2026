@@ -9,7 +9,7 @@ import { fetchJson, progress, readJson, writeJson } from "./lib/io";
 
 const CARGOS: CargoId[] = ["presidente", "governador", "senador"];
 const fresh = process.argv.includes("--fresh");
-const soUf = process.argv.find((a) => /^--uf=/.test(a))?.slice(5).toUpperCase();
+const soUf = process.argv.find((a) => a.startsWith("--uf="))?.slice(5).toUpperCase();
 
 const municipios = await readJson<Municipio[]>("municipios.json");
 const presidenteBr = await readJson<Resultado>("1t/br/presidente.json");
@@ -35,7 +35,7 @@ for (const uf of ufs) {
           try {
             const url = urlResultado({ cargo, turno: 1, abrangencia: uf.sigla, municipio: m.tse });
             const r = normalizarResultado(await fetchJson(url, { fresh }));
-            const v = new Array<number>(candidatos.length).fill(0);
+            const v: number[] = Array.from({ length: candidatos.length }, () => 0);
             for (const c of r.candidatos) {
               const i = indice.get(c.sq);
               if (i === undefined) throw new Error(`candidato ${c.sq} fora da lista de ${uf.sigla}/${cargo}`);

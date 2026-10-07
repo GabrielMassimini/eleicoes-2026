@@ -63,7 +63,7 @@ for (const uf of UFS) {
     // soma municipal = total da UF
     const ufRes = await r(uf.sigla.toLowerCase(), cargo);
     const porSq = new Map(ufRes.candidatos.map((c) => [c.sq, c.votos]));
-    const soma = new Array(mun.candidatos.length).fill(0);
+    const soma: number[] = Array.from({ length: mun.candidatos.length }, () => 0);
     for (const m of Object.values(mun.municipios)) m.v.forEach((x, i) => (soma[i] += x));
     mun.candidatos.forEach((c, i) => {
       if (porSq.get(c.sq) !== soma[i]) {

@@ -41,6 +41,34 @@ export interface ResultadoMunicipalUf {
   municipios: Record<string, TotaisCompactos & { v: number[] }>;
 }
 
+export interface PerfilCandidato {
+  sq: string;
+  numero: string;
+  nome: string;
+  nomeCompleto: string;
+  cargo: CargoId;
+  /** "BR" para Presidente. */
+  uf: string;
+  partido: string;
+  partidoNome: string;
+  federacao?: string;
+  coligacao?: string;
+  composicao?: string;
+  nascimento?: string;
+  ufNascimento?: string;
+  genero?: string;
+  corRaca?: string;
+  instrucao?: string;
+  estadoCivil?: string;
+  ocupacao?: string;
+  situacaoCandidatura?: string;
+  bens: {
+    total: number;
+    quantidade: number;
+    maiores: { tipo: string; descricao: string; valor: number }[];
+  };
+}
+
 export function compactarTotais(t: Totais): TotaisCompactos {
   return {
     eleitorado: t.eleitorado,
