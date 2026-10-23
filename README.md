@@ -17,16 +17,17 @@ Todos os números vêm do Tribunal Superior Eleitoral. Projeto pessoal e indepen
 
 ## Uso de IA
 
-Este projeto foi desenvolvido com uso intenso de IA. A maior parte do código foi escrita pelo **Claude Code**, assistente de programação da Anthropic, e todos os commits deste repositório registram essa coautoria.
+Desenvolvi este projeto em conjunto com o **Claude Code**, assistente de programação da Anthropic. Fomos escrevendo o código juntos: eu programava, tirava dúvidas com ele sempre que precisava e revisava o que ele propunha. Os commits deste repositório registram essa coautoria.
 
 O que foi meu:
 
 - **Ideia e escopo:** escolhi fazer um painel das Eleições 2026 e defini o que ele deveria mostrar, do Presidente ao deputado estadual, em cada estado e município.
+- **Programação:** desenvolvi o código junto com o Claude Code ao longo de todo o projeto.
 - **Design:** decidi o layout, o conteúdo de cada página e as cores dos partidos.
 - **Testes e revisão:** conferi os números, encontrei bugs e pedi as correções.
 - **Publicação:** cuido do deploy do site.
 
-O que o Claude Code fez: escreveu a maior parte do código, incluindo o pipeline de dados, os mapas, as páginas, a rota do 2º turno ao vivo e os testes automatizados.
+Onde o Claude Code mais ajudou: nas integrações e conexões, como a leitura dos arquivos do TSE, o pipeline de dados e a rota do 2º turno ao vivo (cache na CDN e consultas com ETag). Também ajudou no restante do código e nos testes automatizados.
 
 ## O que dá para fazer
 
