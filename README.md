@@ -17,7 +17,7 @@ Todos os números vêm do Tribunal Superior Eleitoral. Projeto pessoal e indepen
 
 ## Uso de IA
 
-Desenvolvi este projeto em conjunto com o **Claude Code**, assistente de programação da Anthropic. Fomos escrevendo o código juntos: eu programava, tirava dúvidas com ele sempre que precisava e revisava o que ele propunha. Os commits deste repositório registram essa coautoria.
+Desenvolvi este projeto em conjunto com o **Claude Code**, assistente de programação da Anthropic. Fomos escrevendo o código juntos: eu programava, tirava dúvidas com ele sempre que precisava e revisava o que ele propunha.
 
 O que foi meu:
 
