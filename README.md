@@ -15,6 +15,19 @@ Todos os números vêm do Tribunal Superior Eleitoral. Projeto pessoal e indepen
 
 ![2º turno ao vivo (simulação com dados do 1º turno)](docs/telas/ao-vivo.jpg)
 
+## Uso de IA
+
+Este projeto foi desenvolvido com uso intenso de IA. A maior parte do código foi escrita pelo **Claude Code**, assistente de programação da Anthropic, e todos os commits deste repositório registram essa coautoria.
+
+O que foi meu:
+
+- **Ideia e escopo:** escolhi fazer um painel das Eleições 2026 e defini o que ele deveria mostrar, do Presidente ao deputado estadual, em cada estado e município.
+- **Design:** decidi o layout, o conteúdo de cada página e as cores dos partidos.
+- **Testes e revisão:** conferi os números, encontrei bugs e pedi as correções.
+- **Publicação:** cuido do deploy do site.
+
+O que o Claude Code fez: escreveu a maior parte do código, incluindo o pipeline de dados, os mapas, as páginas, a rota do 2º turno ao vivo e os testes automatizados.
+
 ## O que dá para fazer
 
 - **Mapa clicável** do Brasil por estado ou pelos 5.571 municípios, com três leituras: quem venceu, percentual de um
